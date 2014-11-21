@@ -1,0 +1,6 @@
+{
+	"shell-version": ["3.14.1"]
+	, "uuid": "grubreboot@desertconsulting.net"
+	, "name": "GRUB Reboot"
+	, "description": "This extension integrates GNOME Shell with GRUB to reboot"
+}
