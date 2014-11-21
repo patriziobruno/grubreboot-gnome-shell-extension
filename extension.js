@@ -12,6 +12,9 @@ const Lang = imports.lang;
 const Clutter = imports.gi.Clutter;
 const Gio = imports.gi.Gio;
 const Convenience = This.imports.convenience;
+const Gettext = imports.gettext.domain(This.metadata['gettext-domain']);
+const _ = Gettext.gettext;
+
 let backup;
 let popupMenu;
 
@@ -24,7 +27,7 @@ function enable() {
     Main.EndSessionDialog.shutdownDialogContent.confirmButtons.push(
 	{
 	    signal: 'ConfirmedReboot'
-        , label:  C_("button", "Restart to...")
+        , label:  _("Restart to...")
         , buttonType: 'menu'
         , action: function(button, dialog, signal) {
             if(popupMenu) {
