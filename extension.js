@@ -1,3 +1,28 @@
+/* jshint esnext:true */
+/*
+ *
+ *  GRUB reboot for GNOME Shell
+ *  - Adds a "Reboot to..." button to the power-off dialog to select the OS to boot into
+ *
+ * Copyright (C) 2014 - 2015
+ *     Patrizio Bruno <desertconsulting@gmail.com>
+ *
+ * This file is part of gnome-shell-extension-grubreboot.
+ *
+ * gnome-shell-extension-grubreboot is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * gnome-shell-extension-grubreboot is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with gnome-shell-extension-openweather.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ */
 
 const ExtensionUtils = imports.misc.extensionUtils;
 const This = ExtensionUtils.getCurrentExtension();
@@ -6,7 +31,6 @@ const St = imports.gi.St;
 const Main = imports.ui.main;
 const Tweener = imports.ui.tweener;
 //const Util = imports.util;
-const GLib = imports.gi.GLib;
 const PopupMenu = imports.ui.popupMenu;
 const Lang = imports.lang;
 const Clutter = imports.gi.Clutter;

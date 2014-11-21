@@ -1,9 +1,39 @@
+// -*- mode: js; js-indent-level: 4; indent-tabs-mode: nil -*-
+/*
+ *
+ * GNOME Shell
+ *
+ * Copyright (C) 2010-2014 - GNOME Foundation
+ *  Dan Winship <danw@gnome.org>
+ *
+ * This file is part of gnome-shell.
+ *
+ * gnome-shell is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * gnome-shell is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with gnome-shell-extension-openweather.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ */
+ 
+ // I modified trySpawn and trySpawnCommandLine to accept an handler for the end of the spawned process.
+ 
 // trySpawnSync:
 // @argv: an argv arraye		
 // @callback: callback to be called at the end of the execution
 //
 // Runs @argv in the foreground. If launching @argv fails,
 // this will throw an error.
+
+const GLib = imports.gi.GLib;
+
 function trySpawn(argv, callback)
 {
     var success, pid;
