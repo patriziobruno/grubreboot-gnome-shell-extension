@@ -106,18 +106,32 @@ function enable() {
 
 function populatePopup(signal, dialog, popup) {
 
-    let file = Gio.DataInputStream.new(Gio.file_new_for_path("/boot/grub/grub.cfg").read(null));
+    let file = getFile();
+    let stream = Gio.DataInputStream.new(file.read(null));
     let line;
     let rx = /^menuentry '([^']+)/;
     let count = 0;
-    while (line = file.read_line (null)) {
+    while (line = stream.read_line (null)) {
         if(count++ > 600) break;
         let res = rx.exec(line);
         if(res && res.length) {
             addPopupItem(signal, dialog, popup, res[1]);
         }
     }
-    file.close(null);
+    stream.close(null);
+}
+
+function getFile() {
+    let file;
+    ["/boot/grub/grub.cfg", "/boot/efi/EFI/grub.cfg"].every(function(path) {
+        let f = Gio.file_new_for_path(path);
+        if(f.query_exists(null)) {
+            file = f;
+        } else {
+            return true;
+        }
+    });
+    return file;
 }
 
 function addPopupItem(signal, dialog, popup, item) {
