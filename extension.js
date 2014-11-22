@@ -111,7 +111,7 @@ function populatePopup(signal, dialog, popup) {
     let line;
     let rx = /^menuentry '([^']+)/;
     let count = 0;
-    while (line = stream.read_line (null)) {
+    while ((line = stream.read_line (null))) {
         if(count++ > 600) break;
         let res = rx.exec(line);
         if(res && res.length) {
@@ -122,16 +122,34 @@ function populatePopup(signal, dialog, popup) {
 }
 
 function getFile() {
+
     let file;
-    ["/boot/grub/grub.cfg", "/boot/efi/EFI/grub.cfg"].every(function(path) {
-        let f = Gio.file_new_for_path(path);
-        if(f.query_exists(null)) {
-            file = f;
-        } else {
-            return true;
-        }
-    });
+    
+    if(Gio.file_new_for_path("/sys/firmware/efi").query_file_type(Gio.FileQueryInfoFlags.NOFOLLOW_SYMLINKS, null) == Gio.FileType.DIRECTORY) {
+        file = findFile(Gio.file_new_for_path("/boot/grub/efi"));
+    } else {
+        file = Gio.file_new_for_path("/boot/grub/grub.cfg");
+    }
     return file;
+}
+
+function findFile(dir) {
+
+    let rv;
+    if(dir.query_file_type(Gio.FileQueryInfoFlags.NONE, null) == Gio.FileType.DIRECTORY) {
+        let fenum = dir.enumerate_children("", Gio.FileQueryInfoFlags.NONE, null);
+        let file;
+        while(!rv && (file = fenum.next_file(null))) {
+            if((file.get_file_type() == Gio.FileType.REGULAR)
+                && file.get_name() == 'grub.cfg') {
+                rv = Gio.file_new_for_path(dir.get_path() + '/grub.cfg');
+            } else if(file.get_file_type() == Gio.FileType.DIRECTORY) {
+                rv = findFile(Gio.file_new_for_path(dir.get_path() + '/' + file.get_name()));
+            }
+        }
+        fenum.close(null);
+    }
+    return rv;
 }
 
 function addPopupItem(signal, dialog, popup, item) {
