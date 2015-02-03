@@ -130,7 +130,8 @@ function getFile() {
     	if(file == null) { // EFI directory is protected
 		copyFileEFI("/boot/efi");
 		file = findFile(Gio.file_new_for_path("/tmp/efi"));
-		rmFileEFI("/tmp/efi");
+		rmFileEFI("/tmp/efi", file);
+		file = Gio.file_new_for_path("/tmp/grub.cfg");
 	}
     } else {
         file = Gio.file_new_for_path("/boot/grub/grub.cfg");
@@ -152,9 +153,9 @@ function copyFileEFI(dir) {
         });
 }
 
-function rmFileEFI(dir) {
+function rmFileEFI(dir, file) {
 	// For security
-	Utils.trySpawnCommandLine("/usr/bin/pkexec --user root /usr/bin/rm -rf '" + dir + "'", function(pid, status, data) {
+	Utils.trySpawnCommandLine("/usr/bin/cp '" + file + "' /tmp && /usr/bin/rm -rf '" + dir + "'", function(pid, status, data) {
             if(status === 0) {
                 let signalId = dialog.connect('closed',
                                                        Lang.bind(dialog, function() {
