@@ -128,7 +128,11 @@ function getFile() {
     if(Gio.file_new_for_path("/sys/firmware/efi").query_file_type(Gio.FileQueryInfoFlags.NOFOLLOW_SYMLINKS, null) == Gio.FileType.DIRECTORY) {
         file = findFile(Gio.file_new_for_path("/boot/efi"));
     } else {
-        file = Gio.file_new_for_path("/boot/grub2/grub.cfg");
+	if(Gio.file_new_for_path("/boot/grub2").query_file_type(Gio.FileQueryInfoFlags.NONE, null) == Gio.FileType.DIRECTORY) {
+        	file = Gio.file_new_for_path("/boot/grub2/grub.cfg");
+	} else {
+		file = Gio.file_new_for_path("/boot/grub/grub.cfg");
+	}
     }
     return file;
 }
