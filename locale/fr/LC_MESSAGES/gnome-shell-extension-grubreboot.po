@@ -1,0 +1,2 @@
+msgid "Restart to..."
+msgstr "Redémarrer sur..."
