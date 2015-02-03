@@ -127,44 +127,10 @@ function getFile() {
     
     if(Gio.file_new_for_path("/sys/firmware/efi").query_file_type(Gio.FileQueryInfoFlags.NOFOLLOW_SYMLINKS, null) == Gio.FileType.DIRECTORY) {
         file = findFile(Gio.file_new_for_path("/boot/efi"));
-    	if(file == null) { // EFI directory is protected
-		copyFileEFI("/boot/efi");
-		file = findFile(Gio.file_new_for_path("/tmp/efi"));
-		rmFileEFI("/tmp/efi", file);
-		file = Gio.file_new_for_path("/tmp/grub.cfg");
-	}
     } else {
-        file = Gio.file_new_for_path("/boot/grub/grub.cfg");
+        file = Gio.file_new_for_path("/boot/grub2/grub.cfg");
     }
     return file;
-}
-
-function copyFileEFI(dir) {
-	// Actually CPU/memory intensive, but it's the only solution for now
-	Utils.trySpawnCommandLine("/usr/bin/pkexec --user root /usr/bin/cp -R '" + dir + "' /tmp && /usr/bin/pkexec --user root /usr/bin/chmod -R 755 /tmp/efi", function(pid, status, data) {
-            if(status === 0) {
-                let signalId = dialog.connect('closed',
-                                                       Lang.bind(dialog, function() {
-                                                               this.disconnect(signalId);
-                                                               this._confirm(signal);
-                                                       }));
-                dialog.close();
-            }
-        });
-}
-
-function rmFileEFI(dir, file) {
-	// For security
-	Utils.trySpawnCommandLine("/usr/bin/cp '" + file + "' /tmp && /usr/bin/rm -rf '" + dir + "'", function(pid, status, data) {
-            if(status === 0) {
-                let signalId = dialog.connect('closed',
-                                                       Lang.bind(dialog, function() {
-                                                               this.disconnect(signalId);
-                                                               this._confirm(signal);
-                                                       }));
-                dialog.close();
-            }
-        });
 }
 
 function findFile(dir) {
