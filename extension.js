@@ -124,11 +124,16 @@ function populatePopup(signal, dialog, popup) {
 function getFile() {
 
     let file;
-    
-    if(Gio.file_new_for_path("/sys/firmware/efi").query_file_type(Gio.FileQueryInfoFlags.NOFOLLOW_SYMLINKS, null) == Gio.FileType.DIRECTORY) {
+    // Test if /boot/efi/EFI exist and if it's not protected
+    if(Gio.file_new_for_path("/boot/efi/EFI").query_file_type(Gio.FileQueryInfoFlags.NONE, null) == Gio.FileType.DIRECTORY) {
         file = findFile(Gio.file_new_for_path("/boot/efi"));
-    } else {
-        file = Gio.file_new_for_path("/boot/grub/grub.cfg");
+    } else { // If /boot/efi is protected we try with the grub legacy (maybe there and up-to-date)
+	// Test if it's grub or grub2
+	if(Gio.file_new_for_path("/boot/grub2").query_file_type(Gio.FileQueryInfoFlags.NONE, null) == Gio.FileType.DIRECTORY) {
+        	file = Gio.file_new_for_path("/boot/grub2/grub.cfg");
+	} else {
+		file = Gio.file_new_for_path("/boot/grub/grub.cfg");
+	}
     }
     return file;
 }
