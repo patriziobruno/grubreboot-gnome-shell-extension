@@ -1,2 +1,2 @@
 msgid "Restart to..."
-msgstr "Neustart von..."
+msgstr "Neustart zu..."
