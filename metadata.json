@@ -4,4 +4,5 @@
 	, "name": "GRUB Reboot"
 	, "description": "This extension integrates GNOME Shell with GRUB to reboot"
 	, "gettext-domain": "gnome-shell-extension-grubreboot"
+	, "url": "https://github.com/patriziobruno/grubreboot-gnome-shell-extension"
 }
