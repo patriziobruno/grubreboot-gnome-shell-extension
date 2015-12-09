@@ -40,17 +40,30 @@ const Gettext = imports.gettext.domain(This.metadata['gettext-domain']);
 const G_ = Gettext.gettext;
 
 let backup;
+let backupButton;
+let backupButtonIdx;
 let popupMenu;
 
 function init() {
     Convenience.initTranslations();
+    backupButton = null;
+    backupButtonIdx = -1;
 }
 
 function enable() {
-    
-    Main.EndSessionDialog.shutdownDialogContent.confirmButtons.push(
-	{
-	    signal: 'ConfirmedReboot'
+    let confirmButtons = Main.EndSessionDialog.shutdownDialogContent.confirmButtons
+      , buttonIdx
+      , button;
+
+    for(let i = 0, n = confirmButtons.length  ; i < n ; i++) {
+        if(confirmButtons[i].signal == 'ConfirmedReboot') {
+            buttonIdx = i;
+            break;
+        }
+    }
+
+    button = {
+        signal: 'ConfirmedReboot'
         , label:  G_("Restart to...")
         , buttonType: 'menu'
         , action: function(button, dialog, signal) {
@@ -60,12 +73,21 @@ function enable() {
                 popupMenu.destroy();
             }
             let popup = new PopupMenu.PopupMenu(button, 0.0, St.Side.TOP, 0);
-            popupMenu = popup;    
+            popupMenu = popup;
             Main.EndSessionDialog._endSessionDialog._group.add_actor(popup.actor);
             populatePopup(signal, dialog, popup);
             popup.toggle();
         }
-    });
+    };
+
+    backupButtonIdx = buttonIdx;
+
+    if(buttonIdx >= 0) {
+        backupButton = confirmButtons[buttonIdx];
+        confirmButtons[buttonIdx] = button;
+    } else {
+        confirmButtons.push(button);
+    }
 
     backup = Main.EndSessionDialog._endSessionDialog._updateButtons;
     
@@ -75,7 +97,7 @@ function enable() {
                          label:  _("Cancel"),
                          key:    Clutter.Escape }];
 
-        for (let i = 0; i < dialogContent.confirmButtons.length; i++) {
+        for (let i = 0,n = dialogContent.confirmButtons.length; i < n; i++) {
             let signal = dialogContent.confirmButtons[i].signal;
             let label = dialogContent.confirmButtons[i].label;
             let buttonType = dialogContent.confirmButtons[i].buttonType;
@@ -168,9 +190,15 @@ function addPopupItem(signal, dialog, popup, item) {
 }
 
 function disable() {
-	Main.EndSessionDialog.shutdownDialogContent.confirmButtons.pop();
-	Main.EndSessionDialog._endSessionDialog._updateButtons = backup;
-	if(popupMenu) {
+    if(backupButton) {
+        Main.EndSessionDialog.shutdownDialogContent.confirmButtons[backupButtonIdx] = backupButton;
+    } else {
+        Main.EndSessionDialog.shutdownDialogContent.confirmButtons.pop();
+    }
+    backupButton = null;
+    backupButtonIdx = -1;
+    Main.EndSessionDialog._endSessionDialog._updateButtons = backup;
+	  if(popupMenu) {
         Main.EndSessionDialog._endSessionDialog._group.remove_actor(popupMenu.actor);
         popupMenu.destroy();
         popupMenu = null;
