@@ -131,7 +131,7 @@ function populatePopup(signal, dialog, popup) {
     let file = getFile();
     let stream = Gio.DataInputStream.new(file.read(null));
     let line;
-    let rx = /^menuentry '([^']+)/;
+    let rx = /^menuentry ['"]([^'"]+)/;
     let count = 0;
     while ((line = stream.read_line (null))) {
         if(count++ > 600) break;
