@@ -29,7 +29,6 @@ const This = ExtensionUtils.getCurrentExtension();
 const Utils = This.imports.utils;
 const St = imports.gi.St;
 const Main = imports.ui.main;
-const Tweener = imports.ui.tweener;
 //const Util = imports.util;
 const PopupMenu = imports.ui.popupMenu;
 const Lang = imports.lang;
@@ -42,12 +41,21 @@ const G_ = Gettext.gettext;
 let backup;
 let backupButton;
 let backupButtonIdx;
+let cancelBackup;
 let popupMenu;
 
 function init() {
     Convenience.initTranslations();
     backupButton = null;
     backupButtonIdx = -1;
+}
+
+function cancel() {
+  if(popupMenu) {
+      popupMenu.destroy();
+      popupMenu = null;
+  }
+  cancelBackup.apply(this, arguments);
 }
 
 function enable() {
@@ -64,33 +72,38 @@ function enable() {
 
     button = {
         signal: 'ConfirmedReboot'
-        , label:  G_("Restart to...")
+        , label:  G_("...")
         , buttonType: 'menu'
         , action: function(button, dialog, signal) {
             if(popupMenu) {
                 popupMenu.removeAll();
                 Main.EndSessionDialog._endSessionDialog._group.remove_actor(popupMenu.actor);
                 popupMenu.destroy();
+                popupMenu = null;
+            } else {
+                let popup = new PopupMenu.PopupMenu(button, 0.0, St.Side.TOP, 0);
+                popupMenu = popup;
+                Main.EndSessionDialog._endSessionDialog._group.add_actor(popup.actor);
+                populatePopup(signal, dialog, popup);
+                popup.toggle();
             }
-            let popup = new PopupMenu.PopupMenu(button, 0.0, St.Side.TOP, 0);
-            popupMenu = popup;
-            Main.EndSessionDialog._endSessionDialog._group.add_actor(popup.actor);
-            populatePopup(signal, dialog, popup);
-            popup.toggle();
         }
     };
 
-    backupButtonIdx = buttonIdx;
+    backupButtonIdx = buttonIdx + 1;
 
     if(buttonIdx >= 0) {
         backupButton = confirmButtons[buttonIdx];
-        confirmButtons[buttonIdx] = button;
+        //confirmButtons[buttonIdx] = button;
+        confirmButtons.splice(backupButtonIdx, 0, button);
     } else {
         confirmButtons.push(button);
     }
 
+    cancelBackup = Main.EndSessionDialog._endSessionDialog.cancel;
+    Main.EndSessionDialog._endSessionDialog.cancel = cancel;
+
     backup = Main.EndSessionDialog._endSessionDialog._updateButtons;
-    
     Main.EndSessionDialog._endSessionDialog._updateButtons = function() {
         let dialogContent = Main.EndSessionDialog.DialogContent[this._type];
         let buttons = [{ action: Lang.bind(this, this.cancel),
@@ -146,7 +159,7 @@ function populatePopup(signal, dialog, popup) {
 function getFile() {
 
     let file;
-    
+
     if(Gio.file_new_for_path("/sys/firmware/efi").query_file_type(Gio.FileQueryInfoFlags.NOFOLLOW_SYMLINKS, null) == Gio.FileType.DIRECTORY) {
         file = findFile(Gio.file_new_for_path("/boot/efi"));
     }
@@ -192,13 +205,20 @@ function addPopupItem(signal, dialog, popup, item) {
 
 function disable() {
     if(backupButton) {
-        Main.EndSessionDialog.shutdownDialogContent.confirmButtons[backupButtonIdx] = backupButton;
+        Main.EndSessionDialog.shutdownDialogContent.confirmButtons.splice(backupButtonIdx, 1);
     } else {
         Main.EndSessionDialog.shutdownDialogContent.confirmButtons.pop();
     }
+
+    if(cancelBackup) {
+        Main.EndSessionDialog._endSessionDialog.cancel = cancelBackup;
+    }
+
     backupButton = null;
     backupButtonIdx = -1;
+
     Main.EndSessionDialog._endSessionDialog._updateButtons = backup;
+
 	  if(popupMenu) {
         Main.EndSessionDialog._endSessionDialog._group.remove_actor(popupMenu.actor);
         popupMenu.destroy();
