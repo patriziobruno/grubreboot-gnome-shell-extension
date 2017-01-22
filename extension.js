@@ -45,184 +45,190 @@ let cancelBackup;
 let popupMenu;
 
 function init() {
-    Convenience.initTranslations();
-    backupButton = null;
-    backupButtonIdx = -1;
+  Convenience.initTranslations();
+  backupButton = null;
+  backupButtonIdx = -1;
 }
 
 function cancel() {
-  if(popupMenu) {
-      popupMenu.destroy();
-      popupMenu = null;
+  if (popupMenu) {
+    popupMenu.destroy();
+    popupMenu = null;
   }
   cancelBackup.apply(this, arguments);
 }
 
 function enable() {
-    let confirmButtons = Main.EndSessionDialog.shutdownDialogContent.confirmButtons
-      , buttonIdx
-      , button;
+  let confirmButtons = Main.EndSessionDialog.shutdownDialogContent.confirmButtons
+    , buttonIdx
+    , button;
 
-    for(let i = 0, n = confirmButtons.length  ; i < n ; i++) {
-        if(confirmButtons[i].signal == 'ConfirmedReboot') {
-            buttonIdx = i;
-            break;
-        }
+  for (let i = 0, n = confirmButtons.length; i < n; i++) {
+    if (confirmButtons[i].signal == 'ConfirmedReboot') {
+      buttonIdx = i;
+      break;
+    }
+  }
+
+  button = {
+    signal: 'ConfirmedReboot'
+    , label: G_("...")
+    , buttonType: 'menu'
+    , action: function (button, dialog, signal) {
+      if (popupMenu) {
+        popupMenu.removeAll();
+        Main.EndSessionDialog._endSessionDialog._group.remove_actor(popupMenu.actor);
+        popupMenu.destroy();
+        popupMenu = null;
+      } else {
+        let popup = new PopupMenu.PopupMenu(button, 0.0, St.Side.TOP, 0);
+        popupMenu = popup;
+        Main.EndSessionDialog._endSessionDialog._group.add_actor(popup.actor);
+        populatePopup(signal, dialog, popup);
+        popup.toggle();
+      }
+    }
+  };
+
+  backupButtonIdx = buttonIdx + 1;
+
+  if (buttonIdx >= 0) {
+    backupButton = confirmButtons[buttonIdx];
+    //confirmButtons[buttonIdx] = button;
+    confirmButtons.splice(backupButtonIdx, 0, button);
+  } else {
+    confirmButtons.push(button);
+  }
+
+  cancelBackup = Main.EndSessionDialog._endSessionDialog.cancel;
+  Main.EndSessionDialog._endSessionDialog.cancel = cancel;
+
+  backup = Main.EndSessionDialog._endSessionDialog._updateButtons;
+  Main.EndSessionDialog._endSessionDialog._updateButtons = function () {
+    let dialogContent = Main.EndSessionDialog.DialogContent[this._type];
+    let buttons = [{
+      action: Lang.bind(this, this.cancel),
+      label: _("Cancel"),
+      key: Clutter.Escape
+    }];
+
+    for (let i = 0, n = dialogContent.confirmButtons.length; i < n; i++) {
+      let signal = dialogContent.confirmButtons[i].signal;
+      let label = dialogContent.confirmButtons[i].label;
+      let buttonType = dialogContent.confirmButtons[i].buttonType;
+      let actionFunc = dialogContent.confirmButtons[i].action;
+
+      if (typeof(buttonType) == 'undefined') {
+        buttons.push({
+          action: Lang.bind(this, function () {
+            this.close(true);
+            let signalId = this.connect('closed',
+              Lang.bind(this, function () {
+                this.disconnect(signalId);
+                this._confirm(signal);
+              }));
+          }),
+          label: label
+        });
+      } else if (buttonType == 'menu') {
+        let dialog = this;
+        buttons.push({
+          action: function (button) {
+            actionFunc(button, dialog, signal);
+          },
+          label: label
+        });
+      }
     }
 
-    button = {
-        signal: 'ConfirmedReboot'
-        , label:  G_("...")
-        , buttonType: 'menu'
-        , action: function(button, dialog, signal) {
-            if(popupMenu) {
-                popupMenu.removeAll();
-                Main.EndSessionDialog._endSessionDialog._group.remove_actor(popupMenu.actor);
-                popupMenu.destroy();
-                popupMenu = null;
-            } else {
-                let popup = new PopupMenu.PopupMenu(button, 0.0, St.Side.TOP, 0);
-                popupMenu = popup;
-                Main.EndSessionDialog._endSessionDialog._group.add_actor(popup.actor);
-                populatePopup(signal, dialog, popup);
-                popup.toggle();
-            }
-        }
-    };
-
-    backupButtonIdx = buttonIdx + 1;
-
-    if(buttonIdx >= 0) {
-        backupButton = confirmButtons[buttonIdx];
-        //confirmButtons[buttonIdx] = button;
-        confirmButtons.splice(backupButtonIdx, 0, button);
-    } else {
-        confirmButtons.push(button);
-    }
-
-    cancelBackup = Main.EndSessionDialog._endSessionDialog.cancel;
-    Main.EndSessionDialog._endSessionDialog.cancel = cancel;
-
-    backup = Main.EndSessionDialog._endSessionDialog._updateButtons;
-    Main.EndSessionDialog._endSessionDialog._updateButtons = function() {
-        let dialogContent = Main.EndSessionDialog.DialogContent[this._type];
-        let buttons = [{ action: Lang.bind(this, this.cancel),
-                         label:  _("Cancel"),
-                         key:    Clutter.Escape }];
-
-        for (let i = 0,n = dialogContent.confirmButtons.length; i < n; i++) {
-            let signal = dialogContent.confirmButtons[i].signal;
-            let label = dialogContent.confirmButtons[i].label;
-            let buttonType = dialogContent.confirmButtons[i].buttonType;
-            let actionFunc = dialogContent.confirmButtons[i].action;
-
-	        if(typeof(buttonType) == 'undefined') {
-	            buttons.push({ action: Lang.bind(this, function() {
-    	                       this.close(true);
-		                       let signalId = this.connect('closed',
-	                                                   Lang.bind(this, function() {
-		                                                       this.disconnect(signalId);
-		                                                       this._confirm(signal);
-	                                                   }));
-			                   }),
-			           label: label });
-	        } else if(buttonType == 'menu'){
-	            let dialog = this;
-	            buttons.push({ action: function(button) {
-                	                actionFunc(button, dialog, signal);
-			                   },
-			           label: label });
-	        }
-        }
-
-        this.setButtons(buttons);
-    };
+    this.setButtons(buttons);
+  };
 }
 
 function populatePopup(signal, dialog, popup) {
 
-    let file = getFile();
-    let stream = Gio.DataInputStream.new(file.read(null));
-    let line;
-    let rx = /^menuentry ['"]([^'"]+)/;
-    let count = 0;
-    while ((line = stream.read_line (null))) {
-        if(count++ > 600) break;
-        let res = rx.exec(line);
-        if(res && res.length) {
-            addPopupItem(signal, dialog, popup, res[1]);
-        }
+  let file = getFile();
+  let stream = Gio.DataInputStream.new(file.read(null));
+  let line;
+  let rx = /^menuentry ['"]([^'"]+)/;
+  let count = 0;
+  while ((line = stream.read_line(null))) {
+    if (count++ > 600) break;
+    let res = rx.exec(line);
+    if (res && res.length) {
+      addPopupItem(signal, dialog, popup, res[1]);
     }
-    stream.close(null);
+  }
+  stream.close(null);
 }
 
 function getFile() {
 
-    let file;
+  let file;
 
-    if(Gio.file_new_for_path("/sys/firmware/efi").query_file_type(Gio.FileQueryInfoFlags.NOFOLLOW_SYMLINKS, null) == Gio.FileType.DIRECTORY) {
-        file = findFile(Gio.file_new_for_path("/boot/efi"));
-    }
-    if(!file) {
-        file = Gio.file_new_for_path("/boot/grub/grub.cfg");
-    }
-    return file;
+  if (Gio.file_new_for_path("/sys/firmware/efi").query_file_type(Gio.FileQueryInfoFlags.NOFOLLOW_SYMLINKS, null) == Gio.FileType.DIRECTORY) {
+    file = findFile(Gio.file_new_for_path("/boot/efi"));
+  }
+  if (!file) {
+    file = Gio.file_new_for_path("/boot/grub/grub.cfg");
+  }
+  return file;
 }
 
 function findFile(dir) {
 
-    let rv;
-    if(dir.query_file_type(Gio.FileQueryInfoFlags.NONE, null) == Gio.FileType.DIRECTORY) {
-        let fenum = dir.enumerate_children("", Gio.FileQueryInfoFlags.NONE, null);
-        let file;
-        while(!rv && (file = fenum.next_file(null))) {
-            if((file.get_file_type() == Gio.FileType.REGULAR)
-                && file.get_name() == 'grub.cfg') {
-                rv = Gio.file_new_for_path(dir.get_path() + '/grub.cfg');
-            } else if(file.get_file_type() == Gio.FileType.DIRECTORY) {
-                rv = findFile(Gio.file_new_for_path(dir.get_path() + '/' + file.get_name()));
-            }
-        }
-        fenum.close(null);
+  let rv;
+  if (dir.query_file_type(Gio.FileQueryInfoFlags.NONE, null) == Gio.FileType.DIRECTORY) {
+    let fenum = dir.enumerate_children("", Gio.FileQueryInfoFlags.NONE, null);
+    let file;
+    while (!rv && (file = fenum.next_file(null))) {
+      if ((file.get_file_type() == Gio.FileType.REGULAR)
+        && file.get_name() == 'grub.cfg') {
+        rv = Gio.file_new_for_path(dir.get_path() + '/grub.cfg');
+      } else if (file.get_file_type() == Gio.FileType.DIRECTORY) {
+        rv = findFile(Gio.file_new_for_path(dir.get_path() + '/' + file.get_name()));
+      }
     }
-    return rv;
+    fenum.close(null);
+  }
+  return rv;
 }
 
 function addPopupItem(signal, dialog, popup, item) {
-    popup.addAction(item, function() {
-        Utils.trySpawnCommandLine("/usr/bin/pkexec --user root /usr/sbin/grub-reboot '" + item + "'", function(pid, status, data) {
-            if(status === 0) {
-                let signalId = dialog.connect('closed',
-                                                       Lang.bind(dialog, function() {
-                                                               this.disconnect(signalId);
-                                                               this._confirm(signal);
-                                                       }));
-                dialog.close();
-            }
-        });
+  popup.addAction(item, function () {
+    Utils.trySpawnCommandLine("/usr/bin/pkexec --user root /usr/sbin/grub-reboot '" + item + "'", function (pid, status, data) {
+      if (status === 0) {
+        let signalId = dialog.connect('closed',
+          Lang.bind(dialog, function () {
+            this.disconnect(signalId);
+            this._confirm(signal);
+          }));
+        dialog.close();
+      }
     });
+  });
 }
 
 function disable() {
-    if(backupButton) {
-        Main.EndSessionDialog.shutdownDialogContent.confirmButtons.splice(backupButtonIdx, 1);
-    } else {
-        Main.EndSessionDialog.shutdownDialogContent.confirmButtons.pop();
-    }
+  if (backupButton) {
+    Main.EndSessionDialog.shutdownDialogContent.confirmButtons.splice(backupButtonIdx, 1);
+  } else {
+    Main.EndSessionDialog.shutdownDialogContent.confirmButtons.pop();
+  }
 
-    if(cancelBackup) {
-        Main.EndSessionDialog._endSessionDialog.cancel = cancelBackup;
-    }
+  if (cancelBackup) {
+    Main.EndSessionDialog._endSessionDialog.cancel = cancelBackup;
+  }
 
-    backupButton = null;
-    backupButtonIdx = -1;
+  backupButton = null;
+  backupButtonIdx = -1;
 
-    Main.EndSessionDialog._endSessionDialog._updateButtons = backup;
+  Main.EndSessionDialog._endSessionDialog._updateButtons = backup;
 
-	  if(popupMenu) {
-        Main.EndSessionDialog._endSessionDialog._group.remove_actor(popupMenu.actor);
-        popupMenu.destroy();
-        popupMenu = null;
-    }
+  if (popupMenu) {
+    Main.EndSessionDialog._endSessionDialog._group.remove_actor(popupMenu.actor);
+    popupMenu.destroy();
+    popupMenu = null;
+  }
 }
 
