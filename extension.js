@@ -166,7 +166,9 @@ function getFile() {
 
   let file;
 
-  if (Gio.file_new_for_path("/sys/firmware/efi").query_file_type(Gio.FileQueryInfoFlags.NOFOLLOW_SYMLINKS, null) == Gio.FileType.DIRECTORY) {
+  // fedora derivatives have /etc/grub2.cfg and /etc/grub2-efi.cfg that links to the location of the BIOS and EFI installs.
+  if ((Gio.file_new_for_path("/etc/grub2-efi.cfg").query_file_type(Gio.FileQueryInfoFlags.NOFOLLOW_SYMLINKS, null) == Gio.FileType.SYMBOLIC_LINK)
+      && (Gio.file_new_for_path("/sys/firmware/efi").query_file_type(Gio.FileQueryInfoFlags.NOFOLLOW_SYMLINKS, null) == Gio.FileType.DIRECTORY)) {
     file = findFile(Gio.file_new_for_path("/boot/efi"));
   }
   if (!file) {
