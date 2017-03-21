@@ -101,7 +101,7 @@ function enable() {
 
   button = {
     signal: 'ConfirmedReboot'
-    , label: G_("...")
+    , label: G_("Restart to...")
     , buttonType: 'menu'
     , expand: false
     , align: St.Align.START
