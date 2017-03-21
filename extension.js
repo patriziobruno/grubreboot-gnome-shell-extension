@@ -42,6 +42,7 @@ let backup;
 let backupButton;
 let backupButtonIdx;
 let cancelBackup;
+let setButtonsBackup;
 let popupMenu;
 
 function init() {
@@ -56,6 +57,34 @@ function cancel() {
     popupMenu = null;
   }
   cancelBackup.apply(this, arguments);
+}
+
+function setButtons(buttons) {
+  this.clearButtons();
+
+  for (let i = 0; i < buttons.length; i++) {
+    let buttonInfo = buttons[i];
+
+    let x_alignment;
+    if (buttons.length == 1)
+      x_alignment = St.Align.END;
+    else if (i == 0)
+      x_alignment = St.Align.START;
+    else if (i == buttons.length - 1)
+      x_alignment = St.Align.END;
+    else
+      x_alignment = St.Align.MIDDLE;
+    log("label: " + buttonInfo.label);
+    log("expand: " + buttonInfo.expand);
+
+    this.addButton(buttonInfo, {
+      expand: typeof buttonInfo.expand === 'undefined' || buttonInfo.expand,
+      x_fill: false,
+      y_fill: false,
+      x_align: buttonInfo.align || x_alignment,
+      y_align: St.Align.MIDDLE
+    });
+  }
 }
 
 function enable() {
@@ -74,6 +103,8 @@ function enable() {
     signal: 'ConfirmedReboot'
     , label: G_("...")
     , buttonType: 'menu'
+    , expand: false
+    , align: St.Align.START
     , action: function (button, dialog, signal) {
       if (popupMenu) {
         popupMenu.removeAll();
@@ -103,6 +134,9 @@ function enable() {
   cancelBackup = Main.EndSessionDialog._endSessionDialog.cancel;
   Main.EndSessionDialog._endSessionDialog.cancel = cancel;
 
+  setButtonsBackup = Main.EndSessionDialog._endSessionDialog.setButtons;
+  Main.EndSessionDialog._endSessionDialog.setButtons = setButtons;
+
   backup = Main.EndSessionDialog._endSessionDialog._updateButtons;
   Main.EndSessionDialog._endSessionDialog._updateButtons = function () {
     let dialogContent = Main.EndSessionDialog.DialogContent[this._type];
@@ -117,6 +151,8 @@ function enable() {
       let label = dialogContent.confirmButtons[i].label;
       let buttonType = dialogContent.confirmButtons[i].buttonType;
       let actionFunc = dialogContent.confirmButtons[i].action;
+      let expand = dialogContent.confirmButtons[i].expand;
+      let align = dialogContent.confirmButtons[i].align;
 
       if (typeof(buttonType) == 'undefined') {
         buttons.push({
@@ -128,7 +164,9 @@ function enable() {
                 this._confirm(signal);
               }));
           }),
-          label: label
+          label: label,
+          expand: expand,
+          align: align
         });
       } else if (buttonType == 'menu') {
         let dialog = this;
@@ -136,7 +174,9 @@ function enable() {
           action: function (button) {
             actionFunc(button, dialog, signal);
           },
-          label: label
+          label: label,
+          expand: expand,
+          align: align
         });
       }
     }
@@ -171,6 +211,9 @@ function getFile() {
   }
   if (!file) {
     file = Gio.file_new_for_path("/boot/grub/grub.cfg");
+    if (!file.query_exists(null)) {
+      file = Gio.file_new_for_path("/boot/grub2/grub.cfg");
+    }
   }
   return file;
 }
@@ -216,12 +259,14 @@ function disable() {
     Main.EndSessionDialog.shutdownDialogContent.confirmButtons.pop();
   }
 
-  if (cancelBackup) {
-    Main.EndSessionDialog._endSessionDialog.cancel = cancelBackup;
-  }
+  Main.EndSessionDialog._endSessionDialog.cancel = cancelBackup;
+  Main.EndSessionDialog._endSessionDialog.setButtons = setButtonsBackup;
 
   backupButton = null;
   backupButtonIdx = -1;
+
+  cancelBackup = null;
+  setButtonsBackup = null;
 
   Main.EndSessionDialog._endSessionDialog._updateButtons = backup;
 
