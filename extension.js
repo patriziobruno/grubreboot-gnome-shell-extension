@@ -222,7 +222,11 @@ function findFile(dir) {
 
   let rv;
   if (dir.query_file_type(Gio.FileQueryInfoFlags.NONE, null) == Gio.FileType.DIRECTORY) {
-    let fenum = dir.enumerate_children("", Gio.FileQueryInfoFlags.NONE, null);
+    try {
+      let fenum = dir.enumerate_children("", Gio.FileQueryInfoFlags.NONE, null);
+    } catch (err) {
+      return null;
+    }
     let file;
     while (!rv && (file = fenum.next_file(null))) {
       if ((file.get_file_type() == Gio.FileType.REGULAR)
